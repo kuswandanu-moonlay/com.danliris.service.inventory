@@ -6,6 +6,7 @@ using Com.Danliris.Service.Inventory.Lib.Services.FpRegradingResultDocs;
 using Com.Danliris.Service.Inventory.Lib.Services.FpReturnFromBuyers;
 using Com.Danliris.Service.Inventory.Lib.Services.FPReturnInvToPurchasingService;
 using Com.Danliris.Service.Inventory.Lib.Services.GarmentLeftoverWarehouse.GarmentLeftoverWarehouseReceiptFabricServices;
+using Com.Danliris.Service.Inventory.Lib.Services.GarmentLeftoverWarehouse.Stock;
 using Com.Danliris.Service.Inventory.Lib.Services.Inventory;
 using Com.Danliris.Service.Inventory.Lib.Services.MaterialDistributionNoteService;
 using Com.Danliris.Service.Inventory.Lib.Services.MaterialRequestNoteServices;
@@ -19,6 +20,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Swashbuckle.AspNetCore.Swagger;
 using System;
@@ -80,6 +82,8 @@ namespace Com.Danliris.Service.Inventory.WebApi
                 .AddTransient<IFpReturnFromBuyerService, FpReturnFromBuyerService>()
                 .AddTransient<IFPReturnInvToPurchasingService, NewFPReturnInvToPurchasingService>()
                 .AddTransient<IGarmentLeftoverWarehouseReceiptFabricService, GarmentLeftoverWarehouseReceiptFabricService>()
+                .AddTransient<IGarmentLeftoverWarehouseStockService, GarmentLeftoverWarehouseStockService>()
+                .AddTransient<IGarmentLeftoverWarehouseStockHistoryService, GarmentLeftoverWarehouseStockHistoryService>()
                 .AddScoped<IIdentityService, IdentityService>()
                 .AddScoped<IValidateService, ValidateService>()
                 .AddScoped<IHttpService, HttpService>()
@@ -139,7 +143,11 @@ namespace Com.Danliris.Service.Inventory.WebApi
                 .AddMvcCore()
                 .AddApiExplorer()
                 .AddAuthorization()
-                .AddJsonOptions(options => options.SerializerSettings.ContractResolver = new DefaultContractResolver())
+                .AddJsonOptions(options =>
+                {
+                    options.SerializerSettings.Converters.Add(new StringEnumConverter());
+                    options.SerializerSettings.ContractResolver = new DefaultContractResolver();
+                })
                 .AddJsonFormatters();
 
             #region Swagger
