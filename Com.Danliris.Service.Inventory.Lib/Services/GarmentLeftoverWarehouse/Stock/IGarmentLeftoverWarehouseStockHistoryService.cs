@@ -6,6 +6,7 @@ namespace Com.Danliris.Service.Inventory.Lib.Services.GarmentLeftoverWarehouse.S
 {
     public interface IGarmentLeftoverWarehouseStockHistoryService
     {
+        Task<int> StockIn(GarmentLeftoverWarehouseStock Stock);
         Task<int> StockIn(int StockId, double Quantity);
         Task<int> StockOut(int StockId, double Quantity);
         List<GarmentLeftoverWarehouseStockHistory> ReadAll();

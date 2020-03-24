@@ -10,8 +10,12 @@ namespace Com.Danliris.Service.Inventory.Lib.Configs.GarmentLeftoverWarehouse.St
         {
             builder.Property(p => p.UnitCode).HasMaxLength(25);
             builder.Property(p => p.UnitName).HasMaxLength(100);
-            builder.Property(p => p.PONo).HasMaxLength(10);
-            builder.Property(p => p.RONo).HasMaxLength(10);
+            builder.Property(p => p.PONo)
+                .HasMaxLength(25)
+                .IsRequired();
+            builder.Property(p => p.RONo)
+                .HasMaxLength(25)
+                .IsRequired();
             builder.Property(p => p.ProductCode).HasMaxLength(25);
             builder.Property(p => p.ProductName).HasMaxLength(100);
             builder.Property(p => p.UomUnit).HasMaxLength(100);

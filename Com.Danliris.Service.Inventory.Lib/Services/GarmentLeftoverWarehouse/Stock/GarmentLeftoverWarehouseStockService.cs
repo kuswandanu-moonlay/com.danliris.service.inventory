@@ -14,7 +14,8 @@ namespace Com.Danliris.Service.Inventory.Lib.Services.GarmentLeftoverWarehouse.S
         private const string UserAgent = "GarmentLeftoverWarehouseStockService";
 
         private InventoryDbContext DbContext;
-        private DbSet<GarmentLeftoverWarehouseStock> DbSet;
+        private DbSet<GarmentLeftoverWarehouseStock> DbSetStock;
+        private DbSet<GarmentLeftoverWarehouseStockHistory> DbSetStockHistory;
 
         private readonly IServiceProvider ServiceProvider;
         private readonly IIdentityService IdentityService;
@@ -22,7 +23,8 @@ namespace Com.Danliris.Service.Inventory.Lib.Services.GarmentLeftoverWarehouse.S
         public GarmentLeftoverWarehouseStockService(InventoryDbContext dbContext, IServiceProvider serviceProvider)
         {
             DbContext = dbContext;
-            DbSet = DbContext.Set<GarmentLeftoverWarehouseStock>();
+            DbSetStock = DbContext.Set<GarmentLeftoverWarehouseStock>();
+            DbSetStockHistory = DbContext.Set<GarmentLeftoverWarehouseStockHistory>();
 
             ServiceProvider = serviceProvider;
             IdentityService = (IIdentityService)serviceProvider.GetService(typeof(IIdentityService));
@@ -34,7 +36,7 @@ namespace Com.Danliris.Service.Inventory.Lib.Services.GarmentLeftoverWarehouse.S
             {
                 int Affected = 0;
 
-                var Query = DbSet.Where(w => w.ReferenceType == stock.ReferenceType && w.UnitId == stock.UnitId);
+                var Query = DbSetStock.Where(w => w.ReferenceType == stock.ReferenceType && w.UnitId == stock.UnitId);
 
                 switch (stock.ReferenceType)
                 {
@@ -59,7 +61,7 @@ namespace Com.Danliris.Service.Inventory.Lib.Services.GarmentLeftoverWarehouse.S
                     stock.FlagForUpdate(IdentityService.Username, UserAgent);
 
                     stock.Histories = new List<GarmentLeftoverWarehouseStockHistory>();
-                    GarmentLeftoverWarehouseStockHistory stockHistory = new GarmentLeftoverWarehouseStockHistory
+                    var stockHistory = new GarmentLeftoverWarehouseStockHistory
                     {
                         StockType = GarmentLeftoverWarehouseStockTypeEnum.IN,
                         BeforeQuantity = 0,
@@ -70,12 +72,28 @@ namespace Com.Danliris.Service.Inventory.Lib.Services.GarmentLeftoverWarehouse.S
                     stockHistory.FlagForUpdate(IdentityService.Username, UserAgent);
                     stock.Histories.Add(stockHistory);
 
-                    DbSet.Add(stock);
+                    DbSetStock.Add(stock);
                 }
                 else
                 {
                     existingStock.Quantity += stock.Quantity;
                     existingStock.FlagForUpdate(IdentityService.Username, UserAgent);
+
+                    var lastStockHistory = DbSetStockHistory.Where(w => w.StockId == stock.Id).OrderBy(o => o._CreatedUtc).Last();
+                    var beforeQuantity = lastStockHistory.AfterQuantity;
+
+                    var stockHistory = new GarmentLeftoverWarehouseStockHistory
+                    {
+                        StockId = stock.Id,
+                        StockType = GarmentLeftoverWarehouseStockTypeEnum.IN,
+                        BeforeQuantity = beforeQuantity,
+                        Quantity = stock.Quantity,
+                        AfterQuantity = beforeQuantity + stock.Quantity
+                    };
+                    stockHistory.FlagForCreate(IdentityService.Username, UserAgent);
+                    stockHistory.FlagForUpdate(IdentityService.Username, UserAgent);
+
+                    DbSetStockHistory.Add(stockHistory);
                 }
 
                 Affected = await DbContext.SaveChangesAsync();
@@ -93,7 +111,7 @@ namespace Com.Danliris.Service.Inventory.Lib.Services.GarmentLeftoverWarehouse.S
             {
                 int Affected = 0;
 
-                var Query = DbSet.Where(w => w.ReferenceType == stock.ReferenceType && w.UnitId == stock.UnitId);
+                var Query = DbSetStock.Where(w => w.ReferenceType == stock.ReferenceType && w.UnitId == stock.UnitId);
 
                 switch (stock.ReferenceType)
                 {
@@ -111,9 +129,25 @@ namespace Com.Danliris.Service.Inventory.Lib.Services.GarmentLeftoverWarehouse.S
                         break;
                 }
 
-                var existingData = Query.Single();
-                existingData.Quantity -= stock.Quantity;
-                existingData.FlagForUpdate(IdentityService.Username, UserAgent);
+                var existingStock = Query.Single();
+                existingStock.Quantity -= stock.Quantity;
+                existingStock.FlagForUpdate(IdentityService.Username, UserAgent);
+
+                var lastStockHistory = DbSetStockHistory.Where(w => w.StockId == stock.Id).OrderBy(o => o._CreatedUtc).Last();
+                var beforeQuantity = lastStockHistory.AfterQuantity;
+
+                var stockHistory = new GarmentLeftoverWarehouseStockHistory
+                {
+                    StockId = stock.Id,
+                    StockType = GarmentLeftoverWarehouseStockTypeEnum.OUT,
+                    BeforeQuantity = beforeQuantity,
+                    Quantity = -stock.Quantity,
+                    AfterQuantity = beforeQuantity - stock.Quantity
+                };
+                stockHistory.FlagForCreate(IdentityService.Username, UserAgent);
+                stockHistory.FlagForUpdate(IdentityService.Username, UserAgent);
+
+                DbSetStockHistory.Add(stockHistory);
 
                 Affected = await DbContext.SaveChangesAsync();
                 return Affected;

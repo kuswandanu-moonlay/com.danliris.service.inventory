@@ -28,6 +28,42 @@ namespace Com.Danliris.Service.Inventory.Lib.Services.GarmentLeftoverWarehouse.S
             IdentityService = (IIdentityService)serviceProvider.GetService(typeof(IIdentityService));
         }
 
+        public async Task<int> StockIn(GarmentLeftoverWarehouseStock Stock)
+        {
+            try
+            {
+                int Affected = 0;
+
+                double beforeQuantity = 0;
+
+                var previousData = DbSet.Where(w => w.StockId == Stock.Id).OrderBy(o => o._CreatedUtc).LastOrDefault();
+                if (previousData != null)
+                {
+                    beforeQuantity = previousData.AfterQuantity;
+                }
+
+                var newData = new GarmentLeftoverWarehouseStockHistory
+                {
+                    StockId = Stock.Id,
+                    StockType = GarmentLeftoverWarehouseStockTypeEnum.IN,
+                    BeforeQuantity = beforeQuantity,
+                    Quantity = Stock.Quantity,
+                    AfterQuantity = beforeQuantity + Stock.Quantity
+                };
+                newData.FlagForCreate(IdentityService.Username, UserAgent);
+                newData.FlagForUpdate(IdentityService.Username, UserAgent);
+
+                DbSet.Add(newData);
+
+                Affected = await DbContext.SaveChangesAsync();
+                return Affected;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+
         public async Task<int> StockIn(int StockId, double Quantity)
         {
             try
